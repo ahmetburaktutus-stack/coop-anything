@@ -18,9 +18,10 @@ two controllers (XInput, DualSense over raw HID, or Nintendo Switch 2 Pro Contro
 one turtle is loaded in memory (such as Level 1, *Mystical Jungle*), the mod duplicates player 1's turtle object and
 detaches its shared skeleton so both turtles have visible bodies (both appear as Leonardo).
 
-Input is separated by swapping the game's 544-byte Gear input buffer around the per-frame input pipeline and player 2's
-AI update. Air leapfrog (`state 11`) and ground charged team attacks (`state 25` -> `state 14`) can be triggered with
-player 2 as partner, even in Level 1 where team moves are normally locked.
+Input is separated by swapping the game's 584-byte pad and wrapper buffer (`[0x01502198]`) around the input pipeline
+(`0x00639C80`) and player 2's AI update (active when a physical second pad is connected). Air leapfrog (`state 11`) and
+ground charged team attacks (`state 25` -> `state 14`) can be triggered with player 2 as partner, even in Level 1 where
+team moves are normally locked.
 
 Still an early prototype with rough edges: after a team move finishes, the partner plays its single-player exit leap
 before snapping back beside player 1; cloned turtles in solo levels look identical; and testing beyond the opening area
@@ -56,10 +57,11 @@ files are modified.
   with its port open. In solo-turtle levels (Level 1), the mod clones `main actor 0` via the engine's object duplicator
   (`0x00491C40`), unshares its skeleton (`0x006AC230` / `0x006ABF40`), clears `ForceInvisible` (`0x00200000`), and passes
   it through `Turtle_Spawn` using a temporary manager slot.
-- **Its own input context:** the game's 544 bytes of raw/processed input state (`0x015021C0..0x015023DF`) are swapped
-  around the input pipeline (`0x0063EC60`) and around player 2's AI tick, giving player 2 its own input history buffer.
-  DualSense (HID) and Switch 2 Pro Controller (WinUSB) are polled directly and hidden from DirectInput enumeration so
-  the game does not merge them into player 1.
+- **Its own input context:** the game's 584-byte pad and wrapper buffer (`[0x01502198]`: 0x160 bytes pad + 0xE8 bytes
+  wrapper) are swapped around the input pipeline (`0x00639C80`, call site `0x00418E0B`) and around player 2's AI tick,
+  giving player 2 its own input history buffer when a physical pad is present (automated testlane scripts without a
+  second pad fall back to action and move vector interception). DualSense (HID) and Switch 2 Pro Controller (WinUSB) are
+  polled directly and hidden from DirectInput enumeration so the game does not merge them into player 1.
 - **Enemies target player 2:** in the enemy AI tick, main actor 0 is swapped to player 2 when that enemy is closer to
   it, and restored after.
 - **Health bar** for player 2 (D3D9 EndScene hook on the game's real device), bound to the turtle's 0-100 health (`AI+0x174`).

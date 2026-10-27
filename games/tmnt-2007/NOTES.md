@@ -24,9 +24,10 @@ has SecuROM traces; the game exes carry a RUNASADMIN compatibility flag, so memo
 - Pad manager 0x0063DD40, four XInput pad objects at mgr+0x30..+0x3C; `GamePadX360` read ~0x00646B30 calls
   `XInputGetState([this+0xEC], this+0xD8)`. If `[0x0150218C]` (DirectInput joystick list at launch) is NULL and an
   XInput pad connects later, `0x0063DD40` dereferences NULL+4 and crashes.
-- Differential memory scan (paused control/test/verify phases) isolated the 544-byte Gear input buffer at
-  `0x015021C0..0x015023DF`, updated each frame by `FUN_0063ec60` (called at `0x00418E0B`). Swapping those 544 bytes
-  around a second call to `FUN_0063ec60` and around player 2's AI tick gives player 2 an independent input history.
+- The game's active pad record at `[0x01502198]` (`0x160` bytes) and its wrapper at `pad+0x168` (`0xE8` bytes), totaling
+  584 bytes, are updated each frame by `FUN_00639c80` (call site `0x00418E0B`). Swapping these 584 bytes around a second
+  pipeline pass and around player 2's AI tick gives player 2 an independent input history when a second pad is connected
+  (automated testlane scripts without a physical pad fall back to action and move vector interception).
 - Solo-turtle levels (Level 1, *Mystical Jungle*) only register Leonardo (`id 1`) in the turtle manager (`0x1B059C01`).
   `FUN_00491c40` (engine object duplicate) with the turtle manager as caller duplicates Leonardo, but AI init opcode
   `0x32D9` calls `FUN_006ac0f0` (`ANI_ShareSkeleton`, call site `0x0049ECA1`), which makes the clone share player 1's
@@ -48,9 +49,9 @@ has SecuROM traces; the game exes carry a RUNASADMIN compatibility flag, so memo
 
 ## Derived
 
-- Swapping the 544-byte Gear input state (`0x015021C0..0x015023DF`) solves per-player button/stick history in Level 1
-  without per-action emulation, though cloned Leonardo still shows a combo action index difference (`7`/`11` vs `8`) on
-  attack presses.
+- Swapping the 584-byte pad and wrapper buffer (`[0x01502198]`) solves per-player button/stick history in Level 1
+  without per-action emulation when a physical pad is present, though cloned Leonardo still shows a combo action index difference
+  (`7`/`11` vs `8`) on attack presses.
 
 ## Unknown
 
