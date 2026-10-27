@@ -46,6 +46,21 @@ has SecuROM traces; the game exes carry a RUNASADMIN compatibility flag, so memo
 - At the end of a team move, `FUN_00586590` calls `FUN_00585c50(slave, 0)` (absent) after the slave's animation leaps
   off-stage. Redirecting `state 0` to `state 2` and teleporting (`0x004A6150`) to player 1's ground position keeps
   player 2 in the level, though the off-stage leap still plays right before the teleport snap.
+- Team-move timing (measured in the test copy): the master leaves `state 11` on the frame it is thrown (about 0.4-0.5 s
+  after entering), while the slave stays in `state 11` ~1.2 s longer playing the exit leap; `state 14` ends for both
+  turtles in the same frame and the slave does not leap there, only the teleport showed.
+- The state-level fix (mod 77-85) ends the move on the slave one frame after the master leaves the co-op state
+  (`11`, `14..17`): `FUN_00585c50(slave, 2)` or `4` (fall) is called from the AI tick, so the exit-leap animation never
+  starts and the slave lands where it stands. The engine's later `state 0` is swallowed for 3 s, and the old placement
+  now runs only when player 2 is really far (>3 m) from player 1; the stale `g_lastSafeGroundPos` height (which
+  teleported the clone 3 m up after a family attack) is no longer used when player 1 is readable.
+- `AI + 0x58C` (master/slave role) reads `1` for player 2 even outside a team move, so it is a leftover field, not an
+  "in move" flag; `AI + 0x6C8` stayed `0` throughout the observed moves, and `state 11` sub-stage values `1/2/3` from
+  earlier sessions were not reproduced in the 2026-10-27 runs.
+- Cloned Leonardo in solo levels is missing the katana scabbards (the blades are there): the bodies share the same
+  `anim[5]/[6]` shape pointer, every skeleton bone's visual geometry matches player 1's, and copying `anim[1]` (which is
+  null on the clone) does not restore them, so the scabbards are most likely separate prop objects that the engine's
+  object duplication does not copy. Not investigated further.
 
 ## Derived
 

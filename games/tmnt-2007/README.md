@@ -21,11 +21,12 @@ detaches its shared skeleton so both turtles have visible bodies (both appear as
 Input is separated by swapping the game's 584-byte pad and wrapper buffer (`[0x01502198]`) around the input pipeline
 (`0x00639C80`) and player 2's AI update (active when a physical second pad is connected). Air leapfrog (`state 11`) and
 ground charged team attacks (`state 25` -> `state 14`) can be triggered with player 2 as partner, even in Level 1 where
-team moves are normally locked.
+team moves are normally locked. When the move ends, the partner no longer plays its single-player exit leap: player 2's
+state is switched to ground-playable/fall on the frame the master leaves the co-op state, so it simply lands where it
+stands instead of flying off and being teleported back.
 
-Still an early prototype with rough edges: after a team move finishes, the partner plays its single-player exit leap
-before snapping back beside player 1; cloned turtles in solo levels look identical; and testing beyond the opening area
-of Level 1 is minimal. Not released.
+Still an early prototype with rough edges: the cloned turtle in solo levels is missing its katana scabbards, and testing
+beyond the opening area of Level 1 is minimal. Not released.
 
 ## Existing work
 
@@ -69,8 +70,9 @@ files are modified.
   player 2 is leashed to player 1 and brought back if it falls into a pit.
 - **Team moves with player 2:** hooks `GetCoopPartner` (`0x005759D0`), `CheckCoopLock` (`0x005C1DF0`), and
   `Turtle_LockCoop` (`0x005C17C0`) so air leapfrog (`state 11`) and ground charged team attacks (`state 25` -> `state 14`)
-  use player 2 as partner (while blocking quick-tap tag switching). At the end of the move, `SetTurtleState`
-  (`0x00585C50`) redirects `state 0` (absent) to `state 2` (playable) and teleports player 2 back beside player 1.
+  use player 2 as partner (while blocking quick-tap tag switching). `WatchTeamMove` ends the move on player 2 on the frame
+  the master leaves the co-op state (`SetTurtleState` -> `2`/`4`), so the single-player exit leap never starts; a late
+  `state 0` from `FUN_00586590` is swallowed, and player 2 is only teleported beside player 1 if it is really far away.
 
 ## QA
 
@@ -91,9 +93,9 @@ Not released.
 
 ## Known issues
 
-- **Visual pop after team moves:** during the second half of a team move animation (especially air leapfrog `0x74`), the
-  partner turtle still plays its single-player exit leap off-stage for ~0.5-1.0 s before the state ends and teleports it
-  back beside player 1.
+- **Missing scabbards on the clone:** in solo levels player 2 is a cloned Leonardo whose katanas show bare blades without
+  their scabbards; the clone shares the body shape and per-bone visuals with player 1, so the scabbards are probably
+  separate prop objects that the object duplication does not copy.
 - **Identical clone in solo levels:** in levels where only one turtle is loaded (like Level 1), player 2 is a cloned
   Leonardo with the same model and bandana color.
 - **Attack action ID difference on clone:** in the Level 1 self-test, the unarmed/armed attack buttons trigger slightly
@@ -105,7 +107,6 @@ Not released.
 
 ## Next steps
 
-- Cut the single-player exit leap short during team moves so player 2 lands naturally instead of teleport-snapping back
-  when the animation ends.
 - Test multi-brother levels (states `15..17`, downed revive `state 24`, level transitions, and boss scripts).
 - Investigate why the cloned turtle selects a different combo action index (`7`/`11` vs `8`) on attack input.
+- Deepen the co-op camera (dynamic zoom-out, matrix-derived angle, damped vertical follow).
